@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Цифровой Сад</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    background:#A8D080;
+    overflow:hidden;
+    height:100%;height:100dvh;
+    width:100%;
+    touch-action:none;
+    user-select:none;-webkit-user-select:none;
+    overscroll-behavior:none;
+  }
+  canvas{display:block;position:fixed;top:0;left:0}
+
+  /* ── HEADER ── */
+  #header{
+    position:fixed;top:0;left:0;right:0;z-index:100;
+    padding:max(env(safe-area-inset-top),8px) 16px 8px;
+    background:rgba(255,255,255,0.2);
+    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border-bottom:1px solid rgba(255,255,255,0.3);
+    text-align:center;
+  }
+  #header h1{
+    font-size:17px;font-weight:800;
+    color:#2D5016;letter-spacing:-0.3px;
+  }
+  #header .sub{font-size:11px;color:#5A7D3A;font-weight:600;opacity:0.8}
+
+  /* ── LABELS ── */
+  #labels{position:fixed;top:0;left:0;pointer-events:none;z-index:10}
+  .lbl{
+    position:absolute;
+    transform:translate(-50%,6px);
+    font-size:10px;font-weight:700;
+    color:#2D3B18;padding:2px 6px;border-radius:4px;
+    background:rgba(255,255,255,0.5);
+    text-shadow:none;
+    white-space:nowrap;pointer-events:none;
+    transition:all 0.25s ease;
+  }
+  .lbl.hi{background:rgba(255,255,240,0.8);color:#1A5C0A;font-size:11px;transform:translate(-50%,4px)}
+  .lbl.sel{background:rgba(255,255,220,0.95);color:#0D4A00;font-size:12px;font-weight:800;transform:translate(-50%,2px);box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+
+  /* ── HINT ── */
+  #hint{
+    position:fixed;top:auto;bottom:20px;left:50%;transform:translateX(-50%);z-index:90;
+    padding:8px 16px;border-radius:10px;
+    background:rgba(255,255,255,0.3);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border:1px solid rgba(255,255,255,0.4);
+    font-size:12px;color:#3A5F1C;font-weight:600;
+    text-align:center;max-width:85vw;
+    transition:all 0.4s ease;pointer-events:none;
+  }
+  #hint.off{opacity:0;transform:translateX(-50%) translateY(10px)}
+
+  /* ── BOTTOM SHEET ── */
+  #sheet{
+    position:fixed;bottom:0;left:0;right:0;z-index:200;
+    transform:translateY(100%);
+    transition:transform 0.35s cubic-bezier(0.16,1,0.3,1);
+    padding-bottom:env(safe-area-inset-bottom,0);
+  }
+  #sheet.open{transform:translateY(0)}
+  #sheet .inner{
+    background:rgba(255,255,255,0.35);
+    backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);
+    border-top:1px solid rgba(255,255,255,0.5);
+    border-radius:20px 20px 0 0;
+    padding:12px 20px 20px;
+    max-height:50dvh;overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #sheet .handle{
+    width:36px;height:4px;border-radius:2px;
+    background:rgba(0,0,0,0.15);margin:0 auto 12px;
+  }
+  #sheet h2{font-size:18px;font-weight:800;color:#2D5016;margin-bottom:2px}
+  #sheet .desc{font-size:13px;color:#5A7D3A;margin-bottom:10px;line-height:1.4}
+  #sheet .conns-title{font-size:10px;color:#7A9E5A;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-weight:700}
+  #sheet .conns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .chip{
+    padding:6px 12px;border-radius:10px;
+    background:rgba(74,124,35,0.12);
+    font-size:13px;color:#3A6B1A;font-weight:600;
+    cursor:pointer;transition:all 0.15s ease;
+    -webkit-tap-highlight-color:rgba(74,124,35,0.2);
+  }
+  .chip:active{background:rgba(74,124,35,0.25);transform:scale(0.96)}
+  .go-btn{
+    display:block;width:100%;padding:14px;
+    border:none;border-radius:14px;
+    background:linear-gradient(135deg,#4A7C23,#6BAF3A);
+    color:#fff;font-size:15px;font-weight:700;font-family:inherit;
+    cursor:pointer;transition:all 0.15s ease;
+    box-shadow:0 4px 12px rgba(74,124,35,0.3);
+  }
+  .go-btn:active{transform:scale(0.97);box-shadow:0 2px 8px rgba(74,124,35,0.2)}
+
+  /* ── DESKTOP TWEAKS ── */
+  @media(min-width:768px){
+    #header h1{font-size:20px}
+    .lbl{font-size:11px}
+    .lbl.sel{font-size:13px}
+    #sheet{
+      left:auto;right:20px;bottom:20px;width:300px;
+      transform:translateX(340px);
+    }
+    #sheet.open{transform:translateX(0)}
+    #sheet .inner{border-radius:16px;max-height:70vh}
+    #hint{bottom:30px;font-size:13px}
+  }
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>Цифровой Сад</h1>
+  <div class="sub">Нажми на домик, чтобы начать исследование</div>
+</div>
+
+<canvas id="c"></canvas>
+<div id="labels"></div>
+<div id="hint">Перетаскивай карту и выбирай домик</div>
+
+<div id="sheet">
+  <div class="inner">
+    <div class="handle"></div>
+    <h2 id="sTitle">—</h2>
+    <div class="desc" id="sDesc"></div>
+    <div class="conns-title">Связанные заметки</div>
+    <div class="conns" id="sConns"></div>
+    <button class="go-btn" id="sBtn">Начать отсюда</button>
+  </div>
+</div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────
+const N = [
+  {id:'space',    l:'Космос',      gx:0,  gy:0,  r:'#5B6ABF',w:'#E8E0D0',d:'Звёзды, галактики и тайны вселенной'},
+  {id:'music',    l:'Музыка',      gx:3,  gy:0.5,r:'#E85D75',w:'#F0E6D6',d:'Мелодии, ритмы и звуковые ландшафты'},
+  {id:'dreams',   l:'Сны',         gx:1,  gy:2,  r:'#9B6FC3',w:'#EDE4F0',d:'Ночные путешествия подсознания'},
+  {id:'philosophy',l:'Философия',  gx:5,  gy:1.5,r:'#6B8CC7',w:'#E4E8F0',d:'Вечные вопросы бытия и смысла'},
+  {id:'books',    l:'Книги',       gx:7.5,gy:0.5,r:'#C4863B',w:'#F2EAD8',d:'Истории, идеи и миры на страницах'},
+  {id:'langs',    l:'Языки',       gx:9.5,gy:0,  r:'#48A89C',w:'#E0F0EC',d:'Слова, грамматика и культурные коды'},
+  {id:'art',      l:'Искусство',   gx:2,  gy:3.5,r:'#D4694A',w:'#F4E8E0',d:'Визуальное выражение внутреннего мира'},
+  {id:'poetry',   l:'Поэзия',      gx:5,  gy:3.5,r:'#B07ACC',w:'#F0E8F4',d:'Ритм слов и образов'},
+  {id:'history',  l:'История',     gx:8,  gy:2.5,r:'#8B7355',w:'#EDE6D8',d:'Уроки прошлого для настоящего'},
+  {id:'arch',     l:'Архитектура', gx:10.5,gy:2, r:'#7A8B6E',w:'#E8ECE4',d:'Формы пространства и структуры'},
+  {id:'films',    l:'Кино',        gx:1,  gy:5.5,r:'#C75050',w:'#F4E4E4',d:'Визуальные истории и режиссёрские миры'},
+  {id:'travel',   l:'Путешествия', gx:6,  gy:5.5,r:'#4AA88C',w:'#E4F0EA',d:'Новые места, культуры и впечатления'},
+  {id:'code',     l:'Код',         gx:9,  gy:4.5,r:'#5A8FA8',w:'#E4ECF0',d:'Алгоритмы и цифровое творчество'},
+  {id:'games',    l:'Игры',        gx:11, gy:3.5,r:'#E8A840',w:'#F4EEE0',d:'Механики, нарративы и интерактивность'},
+  {id:'photo',    l:'Фотография',  gx:3.5,gy:6.5,r:'#7A6B90',w:'#ECE8F0',d:'Мгновения, застывшие в свете'},
+  {id:'cooking',  l:'Кулинария',   gx:2,  gy:8,  r:'#C87840',w:'#F4ECE0',d:'Вкусы мира и алхимия на кухне'},
+  {id:'plants',   l:'Растения',    gx:5,  gy:7.5,r:'#5EA84A',w:'#E8F0E4',d:'Зелёный мир за окном и внутри'},
+  {id:'health',   l:'Здоровье',    gx:7.5,gy:8.5,r:'#E07070',w:'#F4E8E8',d:'Тело, разум и баланс жизни'},
+];
+
+const E = [
+  ['space','dreams'],['space','philosophy'],
+  ['dreams','poetry'],['dreams','art'],['dreams','films'],
+  ['philosophy','books'],['philosophy','history'],['philosophy','poetry'],
+  ['music','art'],['music','films'],['music','poetry'],
+  ['books','langs'],['books','history'],['books','poetry'],
+  ['art','photo'],['art','arch'],
+  ['history','arch'],['history','langs'],
+  ['films','travel'],['films','photo'],
+  ['travel','cooking'],['travel','photo'],['travel','langs'],['travel','health'],
+  ['code','games'],['code','arch'],
+  ['photo','plants'],
+  ['cooking','health'],['cooking','plants'],
+  ['plants','health'],
+];
+
+// trees
+const trees=[];
+{
+  let s=42;
+  const r=()=>{s=s*16807%2147483647;return(s-1)/2147483646};
+  for(let i=0;i<65;i++){
+    const gx=r()*12.5-0.5,gy=r()*10-0.5;
+    let ok=true;
+    for(const n of N)if((gx-n.gx)**2+(gy-n.gy)**2<0.7){ok=false;break}
+    if(ok)trees.push({gx,gy,tp:r()>0.4?1:0,sc:0.55+r()*0.5,ph:r()*6.28,sp:0.25+r()*0.4});
+  }
+}
+
+// ─── SETUP ───────────────────────────────────────────
+const cv=document.getElementById('c');
+const cx=cv.getContext('2d');
+const $l=document.getElementById('labels');
+let W,H,dpr,baseSC,SC;
+let zoom=1;
+const vp={x:0,y:0};
+let hovered=null,selected=null,t=0;
+const nmap={};N.forEach(n=>nmap[n.id]=n);
+
+function resize(){
+  dpr=Math.min(window.devicePixelRatio||1,2);
+  W=window.innerWidth;H=window.innerHeight;
+  cv.width=W*dpr;cv.height=H*dpr;
+  cv.style.width=W+'px';cv.style.height=H+'px';
+  cx.setTransform(dpr,0,0,dpr,0,0);
+  baseSC=Math.max(Math.min(W/11,H/12,55),28);
+  SC=baseSC*zoom;
+}
+addEventListener('resize',resize);resize();
+
+const COS30=Math.cos(Math.PI/6),SIN30=0.5;
+// center of all nodes in grid coords ≈ (5.33, 3.61)
+const GCX=5.33,GCY=3.61;
+
+function iso(gx,gy,gz){
+  return{
+    x:(gx-gy)*COS30*SC+W/2+vp.x-(GCX-GCY)*COS30*SC,
+    y:(gx+gy)*SIN30*SC-(gz||0)*SC+H/2+vp.y-(GCX+GCY)*SIN30*SC+20
+  };
+}
+function npos(n){return iso(n.gx,n.gy,0)}
+function dep(a,b){return a+b}
+function adj(hex,f){
+  const ri=parseInt(hex.slice(1,3),16),gi=parseInt(hex.slice(3,5),16),bi=parseInt(hex.slice(5,7),16);
+  const c=v=>Math.min(255,Math.max(0,v*f|0));
+  return`rgb(${c(ri)},${c(gi)},${c(bi)})`;
+}
+function conns(n){
+  if(!n)return[];
+  return E.filter(e=>e[0]===n.id||e[1]===n.id).map(e=>nmap[e[0]===n.id?e[1]:e[0]]);
+}
+function edgesOf(n){
+  if(!n)return[];
+  return E.filter(e=>e[0]===n.id||e[1]===n.id);
+}
+
+// ─── DRAW: ROAD ──────────────────────────────────────
+function drawRoad(a,b,hi){
+  const p1=npos(a),p2=npos(b);
+  const dx=p2.x-p1.x,dy=p2.y-p1.y,len=Math.sqrt(dx*dx+dy*dy);
+  const nx=-dy/len*12,ny=dx/len*12;
+  cx.save();
+  cx.beginPath();
+  cx.moveTo(p1.x,p1.y);
+  cx.quadraticCurveTo((p1.x+p2.x)/2+nx*0.4,(p1.y+p2.y)/2+ny*0.4,p2.x,p2.y);
+  if(hi){
+    cx.strokeStyle='rgba(120,180,60,0.45)';cx.lineWidth=9;cx.lineCap='round';cx.stroke();
+  }
+  cx.strokeStyle=hi?'#A09060':'#C4B898';
+  cx.lineWidth=hi?4.5:3;cx.lineCap='round';cx.stroke();
+  cx.strokeStyle=hi?'rgba(255,255,220,0.35)':'rgba(255,255,240,0.2)';
+  cx.lineWidth=1;cx.setLineDash([3,7]);cx.stroke();cx.setLineDash([]);
+  cx.restore();
+}
+
+// ─── DRAW: TREE ──────────────────────────────────────
+function drawTree(tr){
+  const p=iso(tr.gx,tr.gy,0);
+  const s=tr.sc*SC/55;
+  const sw=Math.sin(t*tr.sp+tr.ph)*1.2*s;
+  cx.save();cx.translate(p.x,p.y);
+  // shadow
+  cx.beginPath();cx.ellipse(3*s,5*s,8*s,4*s,0,0,6.28);
+  cx.fillStyle='rgba(0,40,0,0.08)';cx.fill();
+  if(tr.tp){
+    // pine: short visible trunk, 3 overlapping triangle layers
+    cx.fillStyle='#6B4226';cx.fillRect(-1.5*s+sw*0.3,-8*s,3*s,10*s);
+    [[-5,16,14,'#2D6B1E'],[-15,12,13,'#3A8528'],[-25,8,12,'#4A9A35']].forEach(([y,w,h,c])=>{
+      cx.beginPath();cx.moveTo(sw,y*s-h*s);cx.lineTo(sw+w*s/2,y*s);cx.lineTo(sw-w*s/2,y*s);
+      cx.closePath();cx.fillStyle=c;cx.fill();
+    });
+  }else{
+    // deciduous: trunk connects to round foliage blobs
+    cx.fillStyle='#7A5230';cx.fillRect(-1.5*s+sw*0.3,-12*s,3*s,14*s);
+    [[-4,2,9,8,'#3B8C2A'],[3,1,8,7,'#4AA035'],[0,-3,7,6,'#58B040']].forEach(([ox,oy,rx,ry,c])=>{
+      cx.beginPath();cx.ellipse(sw+ox*s,(-18+oy)*s,rx*s,ry*s,0,0,6.28);cx.fillStyle=c;cx.fill();
+    });
+  }
+  cx.restore();
+}
+
+// ─── DRAW: HOUSE ─────────────────────────────────────
+function drawHouse(node){
+  const active=hovered||selected;
+  const isHi=active&&(node===active||conns(active).includes(node));
+  const isSel=node===selected||node===hovered;
+  const p=npos(node);
+  const s=SC/55;
+  const bounce=isSel?Math.sin(t*3)*1.5:0;
+  const bx=p.x,by=p.y-bounce;
+  const hw=15*s,iw=COS30*hw,ih=SIN30*hw;
+  const wh=18*s,rh=15*s,re=3*s;
+
+  cx.save();
+  // shadow
+  cx.beginPath();cx.ellipse(bx+1*s,by+2*s,20*s,10*s,0,0,6.28);
+  cx.fillStyle=isHi?'rgba(80,160,40,0.18)':'rgba(0,30,0,0.1)';cx.fill();
+  // glow
+  if(isHi){
+    cx.beginPath();cx.ellipse(bx,by-wh/2,32*s,28*s,0,0,6.28);
+    const g=cx.createRadialGradient(bx,by-wh/2,4*s,bx,by-wh/2,32*s);
+    g.addColorStop(0,isSel?'rgba(100,200,50,0.3)':'rgba(100,200,50,0.15)');
+    g.addColorStop(1,'rgba(100,200,50,0)');cx.fillStyle=g;cx.fill();
+  }
+  // left wall
+  cx.beginPath();cx.moveTo(bx,by);cx.lineTo(bx-iw,by-ih);cx.lineTo(bx-iw,by-ih-wh);cx.lineTo(bx,by-wh);cx.closePath();
+  cx.fillStyle=adj(node.w,0.92);cx.fill();cx.strokeStyle='rgba(0,0,0,0.06)';cx.lineWidth=0.5;cx.stroke();
+  // right wall
+  cx.beginPath();cx.moveTo(bx,by);cx.lineTo(bx+iw,by-ih);cx.lineTo(bx+iw,by-ih-wh);cx.lineTo(bx,by-wh);cx.closePath();
+  cx.fillStyle=adj(node.w,0.85);cx.fill();cx.stroke();
+  // door
+  const dw=4*s,dh=8*s;
+  cx.beginPath();
+  cx.moveTo(bx-iw*0.35,by-ih*0.35);
+  cx.lineTo(bx-iw*0.35-dw*COS30,by-ih*0.35-dw*SIN30);
+  cx.lineTo(bx-iw*0.35-dw*COS30,by-ih*0.35-dw*SIN30-dh);
+  cx.lineTo(bx-iw*0.35,by-ih*0.35-dh);
+  cx.closePath();cx.fillStyle=adj(node.r,0.55);cx.fill();
+  // window
+  const wo=iw*0.45,ws=4*s;
+  cx.beginPath();
+  cx.moveTo(bx+wo,by-ih*0.45-wh*0.4);
+  cx.lineTo(bx+wo+ws*COS30,by-ih*0.45-ws*SIN30-wh*0.4);
+  cx.lineTo(bx+wo+ws*COS30,by-ih*0.45-ws*SIN30-wh*0.4-ws);
+  cx.lineTo(bx+wo,by-ih*0.45-wh*0.4-ws);
+  cx.closePath();cx.fillStyle='rgba(180,220,255,0.6)';cx.fill();
+  // roof left
+  const rt=by-wh-rh;
+  cx.beginPath();cx.moveTo(bx,rt);cx.lineTo(bx-iw-re,by-ih-wh+re*0.3);cx.lineTo(bx,by-wh+re*0.6);cx.closePath();
+  cx.fillStyle=node.r;cx.fill();
+  // roof right
+  cx.beginPath();cx.moveTo(bx,rt);cx.lineTo(bx+iw+re,by-ih-wh+re*0.3);cx.lineTo(bx,by-wh+re*0.6);cx.closePath();
+  cx.fillStyle=adj(node.r,0.85);cx.fill();
+  // roof front
+  cx.beginPath();cx.moveTo(bx,rt);cx.lineTo(bx+iw+re,by-ih-wh+re*0.3);cx.lineTo(bx-iw-re,by-ih-wh+re*0.3);cx.closePath();
+  cx.fillStyle=adj(node.r,0.75);cx.fill();
+  // chimney
+  const chx=bx-iw*0.3,chw=3*s,chh=8*s;
+  cx.fillStyle='#8B7355';cx.fillRect(chx-chw/2,rt-chh+3*s,chw,chh);
+  cx.fillStyle='#6B5545';cx.fillRect(chx-chw/2-0.5,rt-chh+3*s,chw+1,1.5*s);
+  // smoke
+  if(isSel){
+    for(let i=0;i<3;i++){
+      const st=(t*0.8+i*1.5)%4.5;
+      const sx2=chx+Math.sin(st*2+i)*3*s;
+      const sy2=rt-chh-st*7*s;
+      cx.beginPath();cx.arc(sx2,sy2,(1.5+st*2.5)*s,0,6.28);
+      cx.fillStyle=`rgba(200,200,200,${Math.max(0,1-st/4.5)*0.25})`;cx.fill();
+    }
+  }
+  cx.restore();
+  return{x:bx,y:by+4*s};
+}
+
+// ─── HIT TEST ────────────────────────────────────────
+function hit(mx,my){
+  let best=null,bd=28*SC/55;
+  for(const n of N){
+    const p=npos(n);
+    const d=Math.sqrt((mx-p.x)**2+(my-p.y+12)**2);
+    if(d<bd){bd=d;best=n}
+  }
+  return best;
+}
+
+// ─── ZOOM ────────────────────────────────────────────
+const ZOOM_MIN=0.4,ZOOM_MAX=2.5;
+
+function applyZoom(newZoom,px,py){
+  newZoom=Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,newZoom));
+  const oldZ=zoom;
+  if(newZoom===oldZ)return;
+  const r=newZoom/oldZ;
+  // keep screen point (px,py) fixed: adjust viewport
+  // screen = f(grid)*SC + W/2 + vp.x  =>  vp2 = vp1 + (px - W/2 - vp1)*(1 - r) for x
+  vp.x+=(px-W/2-vp.x)*(1-r);
+  vp.y+=(py-H/2-vp.y)*(1-r);
+  zoom=newZoom;
+}
+
+// wheel zoom
+cv.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const delta=e.deltaY>0?0.9:1.1;
+  applyZoom(zoom*delta,e.clientX,e.clientY);
+},{passive:false});
+
+// ─── TOUCH / MOUSE ───────────────────────────────────
+let drag=false,ds={x:0,y:0},vs={x:0,y:0},tid=null;
+let pinching=false,pinchDist0=0,pinchZoom0=1,pinchCenter={x:0,y:0};
+
+function ptrDown(x,y){
+  drag=true;ds={x,y};vs={x:vp.x,y:vp.y};
+}
+function ptrMove(x,y){
+  if(drag){vp.x=vs.x+(x-ds.x);vp.y=vs.y+(y-ds.y)}
+}
+function ptrUp(x,y){
+  const wasDrag=Math.abs(x-ds.x)>8||Math.abs(y-ds.y)>8;
+  drag=false;
+  if(!wasDrag){
+    const h=hit(x,y);
+    if(h){selected=h;showSheet(h);hovered=null}
+    else{selected=null;hideSheet()}
+  }
+}
+
+cv.addEventListener('mousedown',e=>{ptrDown(e.clientX,e.clientY)});
+cv.addEventListener('mousemove',e=>{
+  ptrMove(e.clientX,e.clientY);
+  if(!drag){const h=hit(e.clientX,e.clientY);hovered=h;cv.style.cursor=h?'pointer':'grab'}
+});
+cv.addEventListener('mouseup',e=>{ptrUp(e.clientX,e.clientY)});
+cv.addEventListener('mouseleave',()=>{drag=false;hovered=null});
+
+function pinchDist(e){
+  const a=e.touches[0],b=e.touches[1];
+  return Math.sqrt((a.clientX-b.clientX)**2+(a.clientY-b.clientY)**2);
+}
+
+cv.addEventListener('touchstart',e=>{
+  if(e.touches.length===2){
+    pinching=true;drag=false;
+    pinchDist0=pinchDist(e);pinchZoom0=zoom;
+    pinchCenter={x:(e.touches[0].clientX+e.touches[1].clientX)/2,y:(e.touches[0].clientY+e.touches[1].clientY)/2};
+  }else if(e.touches.length===1&&!pinching){
+    const p=e.touches[0];tid=p.identifier;ptrDown(p.clientX,p.clientY);
+  }
+},{passive:true});
+cv.addEventListener('touchmove',e=>{
+  if(pinching&&e.touches.length>=2){
+    const d=pinchDist(e);
+    const newCenter={x:(e.touches[0].clientX+e.touches[1].clientX)/2,y:(e.touches[0].clientY+e.touches[1].clientY)/2};
+    applyZoom(pinchZoom0*(d/pinchDist0),newCenter.x,newCenter.y);
+    pinchCenter=newCenter;
+  }else if(!pinching){
+    for(const p of e.changedTouches)if(p.identifier===tid)ptrMove(p.clientX,p.clientY);
+  }
+},{passive:true});
+cv.addEventListener('touchend',e=>{
+  if(e.touches.length<2)pinching=false;
+  for(const p of e.changedTouches)if(p.identifier===tid&&!pinching){ptrUp(p.clientX,p.clientY);tid=null}
+},{passive:true});
+
+// ─── SHEET ───────────────────────────────────────────
+const sheet=document.getElementById('sheet');
+const sTitle=document.getElementById('sTitle');
+const sDesc=document.getElementById('sDesc');
+const sConns=document.getElementById('sConns');
+const sBtn=document.getElementById('sBtn');
+
+// swipe-down to close
+let sheetTouchY=0;
+sheet.addEventListener('touchstart',e=>{sheetTouchY=e.touches[0].clientY},{passive:true});
+sheet.addEventListener('touchend',e=>{
+  if(e.changedTouches[0].clientY-sheetTouchY>60){selected=null;hideSheet()}
+},{passive:true});
+
+function showSheet(n){
+  sTitle.textContent=n.l;
+  sDesc.textContent=n.d;
+  const cs=conns(n);
+  sConns.innerHTML=cs.map(c=>`<span class="chip" data-id="${c.id}">${c.l}</span>`).join('');
+  sConns.querySelectorAll('.chip').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const nd=nmap[el.dataset.id];
+      if(nd){selected=nd;showSheet(nd);panTo(nd)}
+    });
+  });
+  sheet.classList.add('open');
+  document.getElementById('hint').classList.add('off');
+}
+function hideSheet(){sheet.classList.remove('open')}
+
+function panTo(n){
+  const tgt=npos(n);
+  const tx=W/2-tgt.x+vp.x;
+  const ty=H/2-tgt.y+vp.y;
+  const sx=vp.x,sy=vp.y,st=performance.now();
+  (function step(now){
+    const p=Math.min(1,(now-st)/350);
+    const e=1-(1-p)**3;
+    vp.x=sx+(tx-sx)*e;vp.y=sy+(ty-sy)*e;
+    if(p<1)requestAnimationFrame(step);
+  })(st);
+}
+
+sBtn.addEventListener('click',()=>{
+  if(selected)alert(`Начинаем с «${selected.l}»!\n\n${selected.d}`);
+});
+
+// ─── LABELS ──────────────────────────────────────────
+const lbls={};
+N.forEach(n=>{
+  const el=document.createElement('div');el.className='lbl';el.textContent=n.l;
+  $l.appendChild(el);lbls[n.id]=el;
+});
+
+function updateLabels(pos,hiSet){
+  for(const n of N){
+    const el=lbls[n.id],p=pos[n.id];
+    if(p){el.style.left=p.x+'px';el.style.top=p.y+'px'}
+    el.classList.toggle('hi',hiSet.has(n.id)&&n!==selected&&n!==hovered);
+    el.classList.toggle('sel',n===selected||n===hovered);
+  }
+}
+
+// ─── RENDER LOOP ─────────────────────────────────────
+function draw(){
+  t=performance.now()/1000;
+  SC=baseSC*zoom;
+  cx.clearRect(0,0,W,H);
+
+  // sky gradient
+  const sky=cx.createLinearGradient(0,0,0,H*0.55);
+  sky.addColorStop(0,'#87CEEB');sky.addColorStop(1,'#C8E6A0');
+  cx.fillStyle=sky;cx.fillRect(0,0,W,H*0.55);
+
+  // ground
+  const gnd=cx.createLinearGradient(0,H*0.35,0,H);
+  gnd.addColorStop(0,'#B8D890');gnd.addColorStop(1,'#A0C878');
+  cx.fillStyle=gnd;cx.fillRect(0,H*0.35,W,H*0.65);
+
+  const act=hovered||selected;
+  const aEdges=act?edgesOf(act):[];
+  const hiIds=new Set();
+  if(act){hiIds.add(act.id);conns(act).forEach(c=>hiIds.add(c.id))}
+
+  // collect & sort drawables
+  const items=[];
+  E.forEach(e=>{
+    const a=nmap[e[0]],b=nmap[e[1]];
+    const hi=aEdges.some(ae=>ae[0]===e[0]&&ae[1]===e[1]);
+    items.push({t:'r',d:(dep(a.gx,a.gy)+dep(b.gx,b.gy))/2-100,a,b,hi});
+  });
+  trees.forEach(tr=>items.push({t:'t',d:dep(tr.gx,tr.gy),tr}));
+  N.forEach(n=>items.push({t:'h',d:dep(n.gx,n.gy),n}));
+  items.sort((a,b)=>a.d-b.d);
+
+  const lpos={};
+  for(const i of items){
+    if(i.t==='r')drawRoad(i.a,i.b,i.hi);
+    else if(i.t==='t')drawTree(i.tr);
+    else lpos[i.n.id]=drawHouse(i.n);
+  }
+  updateLabels(lpos,hiIds);
+  requestAnimationFrame(draw);
+}
+draw();
+
+// auto-hide hint
+setTimeout(()=>document.getElementById('hint').classList.add('off'),4000);
+</script>
+</body>
+</html>
